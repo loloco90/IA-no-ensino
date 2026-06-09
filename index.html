@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IA no Ensino — Prof. Danilo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --neon-cyan: #00ffff;
+    --neon-green: #00ff41;
+    --neon-yellow: #ffe000;
+    --neon-pink: #ff00aa;
+    --neon-orange: #ff6600;
+    --bg-dark: #050510;
+    --bg-panel: #0a0a1e;
+    --bg-card: #0d0d28;
+    --border-glow: #1a1a4a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-dark);
+    font-family: 'VT323', monospace;
+    color: #cccccc;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    cursor: default;
+    user-select: none;
+  }
+
+  #stars {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  #scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.12) 2px,
+      rgba(0,0,0,0.12) 4px
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  #slideshow {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 20px;
+    background: rgba(0,0,0,0.85);
+    border-bottom: 1px solid var(--neon-cyan);
+    flex-shrink: 0;
+  }
+
+  #topbar .logo {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px var(--neon-cyan);
+    letter-spacing: 1px;
+  }
+
+  #topbar .counter {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--neon-green);
+    text-shadow: 0 0 6px var(--neon-green);
+  }
+
+  #topbar .blink {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--neon-yellow);
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  #progressbar { height: 3px; background: #111; border-bottom: 1px solid #1a1a2a; flex-shrink: 0; }
+  #progressfill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+    transition: width 0.4s ease;
+    box-shadow: 0 0 10px var(--neon-cyan);
+  }
+
+  #slide-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow: hidden;
+  }
+
+  .slide { display: none; width: 100%; max-width: 860px; animation: slideIn 0.3s ease; }
+  .slide.active { display: block; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-glow);
+    padding: 28px 34px;
+    position: relative;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .panel.cyan::before   { background: var(--neon-cyan);   box-shadow: 0 0 12px var(--neon-cyan); }
+  .panel.green::before  { background: var(--neon-green);  box-shadow: 0 0 12px var(--neon-green); }
+  .panel.yellow::before { background: var(--neon-yellow); box-shadow: 0 0 12px var(--neon-yellow); }
+  .panel.pink::before   { background: var(--neon-pink);   box-shadow: 0 0 12px var(--neon-pink); }
+  .panel.orange::before { background: var(--neon-orange); box-shadow: 0 0 12px var(--neon-orange); }
+
+  .slide-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--neon-cyan);
+    margin-bottom: 12px;
+    letter-spacing: 3px;
+    opacity: 0.6;
+  }
+
+  .title-main {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 2.4vw, 22px);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0,255,255,0.25);
+    line-height: 1.8;
+    margin-bottom: 16px;
+  }
+
+  .title-sub {
+    font-family: 'VT323', monospace;
+    font-size: clamp(20px, 2.8vw, 30px);
+    color: var(--neon-green);
+    text-shadow: 0 0 10px var(--neon-green);
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+
+  .title-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: #555;
+    border-top: 1px solid #1a1a3a;
+    padding-top: 14px;
+  }
+
+  .slide-heading {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(10px, 1.6vw, 15px);
+    line-height: 1.8;
+    margin-bottom: 18px;
+  }
+
+  .heading-cyan   { color: var(--neon-cyan);   text-shadow: 0 0 12px var(--neon-cyan); }
+  .heading-green  { color: var(--neon-green);  text-shadow: 0 0 12px var(--neon-green); }
+  .heading-yellow { color: var(--neon-yellow); text-shadow: 0 0 12px var(--neon-yellow); }
+  .heading-pink   { color: var(--neon-pink);   text-shadow: 0 0 12px var(--neon-pink); }
+  .heading-orange { color: var(--neon-orange); text-shadow: 0 0 12px var(--neon-orange); }
+
+  .slide-body {
+    font-family: 'VT323', monospace;
+    font-size: clamp(19px, 2.4vw, 27px);
+    color: #d0d0d0;
+    line-height: 1.5;
+  }
+
+  .item-list { list-style: none; margin-top: 8px; }
+  .item-list li {
+    font-family: 'VT323', monospace;
+    font-size: clamp(17px, 2.1vw, 24px);
+    color: #c0c0c0;
+    padding: 7px 0;
+    border-bottom: 1px dashed #1a1a3a;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.4;
+  }
+  .item-list li:last-child { border-bottom: none; }
+
+  .bullet-cyan   { color: var(--neon-cyan);   flex-shrink: 0; }
+  .bullet-green  { color: var(--neon-green);  flex-shrink: 0; }
+  .bullet-yellow { color: var(--neon-yellow); flex-shrink: 0; }
+  .bullet-pink   { color: var(--neon-pink);   flex-shrink: 0; }
+  .bullet-orange { color: var(--neon-orange); flex-shrink: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+
+  .col-card {
+    background: var(--bg-card);
+    border: 1px solid #1a1a3a;
+    padding: 14px 16px;
+  }
+  .col-card-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+  .col-card ul { list-style: none; }
+  .col-card ul li {
+    font-family: 'VT323', monospace;
+    font-size: clamp(15px, 1.9vw, 21px);
+    color: #b0b0b0;
+    padding: 3px 0;
+    line-height: 1.4;
+  }
+  .col-card ul li::before { content: '▸ '; opacity: 0.4; }
+
+  .alert-box {
+    border: 1px solid;
+    padding: 11px 15px;
+    margin-top: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .alert-cyan   { border-color: var(--neon-cyan);   color: var(--neon-cyan);   background: rgba(0,255,255,0.03); }
+  .alert-yellow { border-color: var(--neon-yellow); color: var(--neon-yellow); background: rgba(255,224,0,0.03); }
+  .alert-green  { border-color: var(--neon-green);  color: var(--neon-green);  background: rgba(0,255,65,0.03); }
+  .alert-pink   { border-color: var(--neon-pink);   color: var(--neon-pink);   background: rgba(255,0,170,0.03); }
+  .alert-label { font-size: 10px; letter-spacing: 3px; margin-bottom: 6px; opacity: 0.6; }
+
+  .three-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 12px; }
+
+  .mini-card {
+    background: var(--bg-card);
+    border: 1px solid #1a1a3a;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .mini-card .icon { font-size: 22px; margin-bottom: 6px; }
+  .mini-card .label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; margin-bottom: 5px; }
+  .mini-card .desc { font-family: 'VT323', monospace; font-size: clamp(14px, 1.7vw, 18px); color: #999; line-height: 1.3; }
+
+  .px-divider {
+    border: none;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--neon-cyan) 0, var(--neon-cyan) 4px, transparent 4px, transparent 8px);
+    margin: 16px 0;
+    opacity: 0.25;
+  }
+
+  .quote-text {
+    font-family: 'VT323', monospace;
+    font-size: clamp(22px, 3.2vw, 38px);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 18px rgba(0,255,255,0.35);
+    line-height: 1.45;
+    text-align: center;
+    padding: 10px 0 18px;
+  }
+  .quote-text::before { content: '\201C '; color: var(--neon-green); }
+  .quote-text::after  { content: ' \201D'; color: var(--neon-green); }
+
+  .px-icon { font-size: clamp(28px,4vw,44px); display:block; margin-bottom:8px; }
+
+  #bottomnav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 20px;
+    background: rgba(0,0,0,0.88);
+    border-top: 1px solid #1a1a3a;
+    flex-shrink: 0;
+  }
+
+  .nav-hint { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #444; letter-spacing: 1px; }
+
+  .nav-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    background: transparent;
+    border: 1px solid #2a2a5a;
+    color: #777;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+  .nav-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); text-shadow: 0 0 8px var(--neon-cyan); box-shadow: 0 0 8px rgba(0,255,255,0.2); }
+  .nav-btn:active { transform: scale(0.96); }
+  .nav-btn:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+
+  #dot-nav { display: flex; gap: 6px; align-items: center; }
+  .dot { width: 6px; height: 6px; background: #2a2a4a; cursor: pointer; transition: all 0.2s; clip-path: polygon(50% 0%,100% 50%,50% 100%,0% 50%); }
+  .dot.active { background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); transform: scale(1.4); }
+
+  @media (max-width: 600px) {
+    .two-col { grid-template-columns: 1fr; }
+    .three-grid { grid-template-columns: repeat(2,1fr); }
+    .panel { padding: 16px 14px; }
+    .nav-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div id="scanlines"></div>
+
+<div id="slideshow">
+
+  <div id="topbar">
+    <div class="logo">&#9655; PROF.DANILO :: UEL</div>
+    <div class="counter" id="slide-counter">SLIDE 01 / 10</div>
+    <div class="blink">&#9646; ONLINE</div>
+  </div>
+
+  <div id="progressbar"><div id="progressfill" style="width:10%"></div></div>
+
+  <div id="slide-area">
+
+    <!-- SLIDE 1 -->
+    <div class="slide active" data-slide="1">
+      <div class="panel cyan">
+        <div class="slide-tag">&gt;&gt; SLIDE_01 :: APRESENTACAO</div>
+        <span class="px-icon">&#129302;</span>
+        <div class="title-main">INTELIGÊNCIA<br>ARTIFICIAL</div>
+        <div class="title-sub">e suas possibilidades no ensino</div>
+        <hr class="px-divider">
+        <div class="title-meta">PROF. DANILO &nbsp;|&nbsp; LICENCIATURA EM QUÍMICA &nbsp;|&nbsp; UEL &nbsp;|&nbsp; PIBID</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2 -->
+    <div class="slide" data-slide="2">
+      <div class="panel green">
+        <div class="slide-tag">&gt;&gt; SLIDE_02 :: IDEIA CENTRAL</div>
+        <div class="slide-heading heading-green">A IA não substitui o professor</div>
+        <div class="slide-body">
+          Ela <span style="color:var(--neon-green)">amplia possibilidades</span> de planejamento, criação, investigação e personalização da aprendizagem.
+        </div>
+        <div class="alert-box alert-green">
+          <div class="alert-label">&gt; UNESCO_FRAMEWORK</div>
+          A UNESCO defende uma visão de IA centrada no ser humano — com uso ético e pedagógico nas escolas.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3 -->
+    <div class="slide" data-slide="3">
+      <div class="panel cyan">
+        <div class="slide-tag">&gt;&gt; SLIDE_03 :: O QUE E IA?</div>
+        <div class="slide-heading heading-cyan">Sistemas capazes de:</div>
+        <div class="three-grid">
+          <div class="mini-card">
+            <div class="icon">&#128269;</div>
+            <div class="label" style="color:var(--neon-cyan)">PADRÕES</div>
+            <div class="desc">Reconhece e aprende com dados</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#128172;</div>
+            <div class="label" style="color:var(--neon-cyan)">RESPOSTAS</div>
+            <div class="desc">Gera textos, imagens e códigos</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#129504;</div>
+            <div class="label" style="color:var(--neon-cyan)">DECISÕES</div>
+            <div class="desc">Apoia escolhas e raciocínio</div>
+          </div>
+        </div>
+        <div class="alert-box alert-cyan" style="margin-top:14px">
+          <div class="alert-label">&gt; DEFINICAO_OPERACIONAL</div>
+          Reconhecer padrões + gerar conteúdo + apoiar tomada de decisões — com ou sem supervisão humana.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4 -->
+    <div class="slide" data-slide="4">
+      <div class="panel yellow">
+        <div class="slide-tag">&gt;&gt; SLIDE_04 :: PARA O PROFESSOR</div>
+        <div class="slide-heading heading-yellow">Possibilidades para quem ensina</div>
+        <ul class="item-list">
+          <li><span class="bullet-yellow">&#9658;</span> Planejar aulas e sequências didáticas</li>
+          <li><span class="bullet-yellow">&#9658;</span> Criar atividades e questões avaliativas</li>
+          <li><span class="bullet-yellow">&#9658;</span> Adaptar textos para diferentes públicos</li>
+          <li><span class="bullet-yellow">&#9658;</span> Produzir roteiros práticos e simulações</li>
+          <li><span class="bullet-yellow">&#9658;</span> Gerar imagens e exemplos contextualizados</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SLIDE 5 -->
+    <div class="slide" data-slide="5">
+      <div class="panel pink">
+        <div class="slide-tag">&gt;&gt; SLIDE_05 :: PARA O ALUNO</div>
+        <div class="slide-heading heading-pink">Possibilidades para quem aprende</div>
+        <ul class="item-list">
+          <li><span class="bullet-pink">&#9658;</span> Pesquisar e revisar conteúdos com apoio personalizado</li>
+          <li><span class="bullet-pink">&#9658;</span> Criar projetos e testar ideias</li>
+          <li><span class="bullet-pink">&#9658;</span> Aprender por investigação e perguntas</li>
+          <li><span class="bullet-pink">&#9658;</span> Receber suporte no próprio ritmo</li>
+          <li><span class="bullet-pink">&#9658;</span> Desenvolver protagonismo no processo</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SLIDE 6 -->
+    <div class="slide" data-slide="6">
+      <div class="panel green">
+        <div class="slide-tag">&gt;&gt; SLIDE_06 :: RELACAO COM A PESQUISA</div>
+        <div class="slide-heading heading-green">IA como apoio na sua pesquisa</div>
+        <div class="slide-body" style="margin-bottom:14px">
+          Conexão direta com aulas investigativas, práticas e por projetos — especialmente no ensino de Química.
+        </div>
+        <div class="two-col">
+          <div class="col-card">
+            <div class="col-card-title" style="color:var(--neon-green)">TCC / PIBID</div>
+            <ul>
+              <li>Aulas por projetos (ABP)</li>
+              <li>Investigação orientada</li>
+              <li>Planejamento reflexivo</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-card-title" style="color:var(--neon-cyan)">EM SALA</div>
+            <ul>
+              <li>Simulações e visualizações</li>
+              <li>Roteiros investigativos</li>
+              <li>Personalização didática</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7 -->
+    <div class="slide" data-slide="7">
+      <div class="panel cyan">
+        <div class="slide-tag">&gt;&gt; SLIDE_07 :: EXEMPLOS EM QUIMICA</div>
+        <div class="slide-heading heading-cyan">IA aplicada ao ensino de Química</div>
+        <div class="three-grid">
+          <div class="mini-card">
+            <div class="icon">&#9876;&#65039;</div>
+            <div class="label" style="color:var(--neon-cyan)">EXPERIMENTOS</div>
+            <div class="desc">Simular reações e prever resultados</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#129514;</div>
+            <div class="label" style="color:var(--neon-green)">MODELOS</div>
+            <div class="desc">Criar visualizações moleculares</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#128207;</div>
+            <div class="label" style="color:var(--neon-yellow)">MAPAS</div>
+            <div class="desc">Montar mapas conceituais</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#128161;</div>
+            <div class="label" style="color:var(--neon-pink)">HIPÓTESES</div>
+            <div class="desc">Gerar e testar hipóteses</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#128300;</div>
+            <div class="label" style="color:var(--neon-orange)">FENÔMENOS</div>
+            <div class="desc">Interpretar fenômenos cotidianos</div>
+          </div>
+          <div class="mini-card">
+            <div class="icon">&#128218;</div>
+            <div class="label" style="color:var(--neon-cyan)">REAÇÕES</div>
+            <div class="desc">Explicar mecanismos de forma visual</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8 -->
+    <div class="slide" data-slide="8">
+      <div class="panel orange">
+        <div class="slide-tag">&gt;&gt; SLIDE_08 :: CUIDADOS NECESSARIOS</div>
+        <div class="slide-heading heading-orange">Atenção: IA não é atalho</div>
+        <ul class="item-list">
+          <li><span class="bullet-orange">&#9888;</span> Não copiar respostas prontas sem reflexão crítica</li>
+          <li><span class="bullet-orange">&#9888;</span> Sempre conferir informações geradas pela IA</li>
+          <li><span class="bullet-orange">&#9888;</span> Evitar dependência — desenvolver autonomia</li>
+          <li><span class="bullet-orange">&#9888;</span> Cultivar pensamento crítico em todo o processo</li>
+        </ul>
+        <div class="alert-box alert-yellow">
+          <div class="alert-label">&gt; OECD_ALERTA</div>
+          A IA ajuda mais quando há princípios pedagógicos claros. Sem isso, pode gerar desempenho aparente sem aprendizagem real.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9 -->
+    <div class="slide" data-slide="9">
+      <div class="panel pink">
+        <div class="slide-tag">&gt;&gt; SLIDE_09 :: PAPEL DO PROFESSOR</div>
+        <div class="slide-heading heading-pink">O professor como mediador</div>
+        <div class="slide-body" style="margin-bottom:16px">
+          A IA entra como <span style="color:var(--neon-pink)">ferramenta</span>, não como dona da aula.
+        </div>
+        <div class="two-col">
+          <div class="col-card">
+            <div class="col-card-title" style="color:var(--neon-pink)">PROFESSOR</div>
+            <ul>
+              <li>Mediador e orientador</li>
+              <li>Cria situações de aprendizagem</li>
+              <li>Avalia o processo</li>
+              <li>Guarda o propósito pedagógico</li>
+            </ul>
+          </div>
+          <div class="col-card">
+            <div class="col-card-title" style="color:var(--neon-cyan)">IA</div>
+            <ul>
+              <li>Ferramenta de apoio</li>
+              <li>Auxilia no planejamento</li>
+              <li>Gera exemplos e recursos</li>
+              <li>Nunca o sujeito central</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10 -->
+    <div class="slide" data-slide="10">
+      <div class="panel cyan">
+        <div class="slide-tag">&gt;&gt; SLIDE_10 :: FECHAMENTO</div>
+        <div class="quote-text" id="quote-text" style="opacity:0; transition: opacity 0.8s 0.3s;">
+          A IA não deve ensinar por nós, mas pode nos ajudar a ensinar melhor.
+        </div>
+        <hr class="px-divider">
+        <div style="text-align:center; margin-top:14px">
+          <div style="font-family:'Share Tech Mono',monospace; font-size:11px; color:#3a3a5a; letter-spacing:2px; margin-bottom:10px">
+            aula com propósito &nbsp;·&nbsp; linguagem acessível &nbsp;·&nbsp; foco em investigação
+          </div>
+          <div style="font-family:'Press Start 2P',monospace; font-size:8px; color:#232340; margin-top:10px">
+            PROF.DANILO :: UEL :: PIBID :: LIC. QUIMICA
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="bottomnav">
+    <div class="nav-hint">[ &larr; ] PREV &nbsp; [ &rarr; ] NEXT &nbsp; [ ESPACO ] AVANCAR</div>
+    <div id="dot-nav"></div>
+    <div style="display:flex; gap:8px">
+      <button class="nav-btn" id="btn-prev" onclick="changeSlide(-1)" disabled>&#9668; PREV</button>
+      <button class="nav-btn" id="btn-next" onclick="changeSlide(1)">NEXT &#9658;</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('stars');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const stars = Array.from({length: 200}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 1.4 + 0.2,
+  speed: Math.random() * 0.25 + 0.05,
+  opacity: Math.random() * 0.7 + 0.2
+}));
+
+function drawStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200,220,255,' + s.opacity + ')';
+    ctx.fill();
+    s.y += s.speed;
+    if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+
+function buildDots() {
+  const nav = document.getElementById('dot-nav');
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i));
+    nav.appendChild(d);
+  }
+}
+
+function goTo(idx) {
+  slides[current].classList.remove('active');
+  document.querySelectorAll('.dot')[current].classList.remove('active');
+  current = idx;
+  slides[current].classList.add('active');
+  document.querySelectorAll('.dot')[current].classList.add('active');
+  document.getElementById('slide-counter').textContent =
+    'SLIDE ' + String(current + 1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0');
+  document.getElementById('progressfill').style.width = ((current + 1) / total * 100) + '%';
+  document.getElementById('btn-prev').disabled = current === 0;
+  document.getElementById('btn-next').disabled = current === total - 1;
+  if (current === total - 1) {
+    setTimeout(() => { document.getElementById('quote-text').style.opacity = '1'; }, 200);
+  }
+}
+
+function changeSlide(dir) {
+  const next = current + dir;
+  if (next >= 0 && next < total) goTo(next);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); }
+});
+
+let touchX = 0;
+document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 40) changeSlide(dx < 0 ? 1 : -1);
+});
+
+buildDots();
+</script>
+</body>
+</html>
